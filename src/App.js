@@ -140,7 +140,11 @@ class App extends Component {
     randomScale:Math.floor(Math.random()*12),
     tipo:'s',
     NameNotation: 'e',
-    display: 'p'
+    display: 'i',
+    acertos: 0,
+    erros:0,
+    questionList:[],
+    timeSpent:0
   }
   
   constructor(props) {
@@ -148,6 +152,8 @@ class App extends Component {
     this.handleChange = this.handleChange.bind(this);
     this.onClick = this.onClick.bind(this);
     this.getNoteName = this.getNoteName.bind(this);
+    this.start = this.start.bind(this);
+    this.stop = this.stop.bind(this);
   }
 
   resultado(escala, resposta){
@@ -173,13 +179,49 @@ class App extends Component {
   }
 
   onClick(a){
+    const timeSpent = (Date.now() - this.state.timer)/1000;
+    let repetirPergunta = false;
     if (this.resultado(this.state.randomScale, this.state.randomNote) === a){
-      this.setState({display:'c'})
+      this.setState(state => {
+        const questionList = state.questionList.concat({scale: state.randomScale, note: state.randomNote,guess: a, right: true, timeSpent: timeSpent });
+        return {
+          display:'c',
+          questionList: questionList
+        }
+      })
+      
     } else {
-      this.setState({display:'e'})
+      repetirPergunta = true;
+      this.setState(state => {
+        const questionList = state.questionList.concat({scale: state.randomScale, note: state.randomNote, guess: a, right: false, timeSpent: timeSpent});
+        return {
+          display:'e',
+          questionList
+        }
+      })
     }
-    this.timer = setTimeout(()=> this.setState({display:'p'}),2000);
+    this.timer = setTimeout(()=> {
+      this.start(repetirPergunta);
+    }
+    ,500);
     
+  }
+
+  start(repetirPergunta) {
+    this.setState(state => {
+      return {
+        display: 'p',
+        timer: Date.now(),
+        randomNote: !repetirPergunta ? Math.floor(Math.random()*12) : state.randomNote,
+        randomScale: ! repetirPergunta ? Math.floor(Math.random()*12) : state.randomScale 
+      };
+    });
+  }
+
+  stop() {
+    this.setState({
+      display: 'f'
+    });
   }
 
   render() {
@@ -197,18 +239,60 @@ class App extends Component {
       paddingTop:'20%',
       margin: '50px auto auto'
     };
+
+    let divIniciar = {
+      display: this.state.display === 'i' ? 'block' : 'none'
+    }
+
+    let divFim = {
+      display: this.state.display === 'f' ? 'block' : 'none'
+    }
     return (
       <div className="App">
         <div className="App-header">
           <img src={logo} className="App-logo" alt="logo" />
           <h2>Escalas</h2>
         </div>
-        <div style={divResposta}></div>
+        <div style={divIniciar}>
+              <br/>
+              <button onClick={this.start}>
+                Iniciar
+              </button>
+        </div>
+        <div style={divFim}>
+          <div>
+          <table>
+          <thead>
+            <tr>
+            <th>Escala</th>
+            <th>Nota</th>
+            <th>Acertou</th>
+            <th>Palpite</th>
+            <th>Resposta</th>            
+            <th>Tempo</th>
+            </tr>
+          </thead>
+          <tbody>
+          {this.state.questionList.map((question, index) => {
+            return <tr key={index}>
+              <td>{this.perguntas[question.scale]}</td>
+              <td>{this.getNoteName(this.notas[question.note])}</td>
+              <td>{question.right ? 'sim' : 'não'}</td>
+              <td>{this.getNoteName(this.notas[question.guess])}</td>
+              <td>{this.getNoteName(this.notas[this.resultado(question.scale, question.note)])}</td>
+              <td>{question.timeSpent}</td>
+            </tr>;
+          })}
+          </tbody>
+          </table>
+          </div>
+        </div>
+        <div style={divResposta}></div>        
         <div style={divPerguntasStyle}>
           <p className="App-intro">
           Qual {this.perguntas[this.state.randomScale]} de {this.getNoteName(this.notas[this.state.randomNote])}?          
           </p>
-          
+
             <div>
               {this.notas.map((nota,index) => {
                 return <Button
@@ -219,6 +303,27 @@ class App extends Component {
                 />;
               })}
             </div>  
+            <br/>
+            <div>
+              acertos: {this.state.questionList.reduce((acertos, question)=>{
+                if(question.right){
+                  return acertos+1;                
+                }
+                else return acertos;
+                },0)}
+              <br/>
+              erros: {this.state.questionList.reduce((erros, question)=>{
+                if(!question.right){
+                  return erros+1;                
+                }
+                else return erros},0)}
+            </div>
+
+            <div>
+              <button onClick={this.stop}>
+                Parar
+              </button>
+            </div>
           </div>
           
           {/* <div>
